@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MyHub Auth Redirector</title>
+    <script async crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" data-clerk-frontend-api="accounts.hexlab8.com"></script>
+</head>
+<body style="background:#0F172A;color:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;box-sizing:border-box;">
+    <div style="background:#1E293B;border-radius:12px;padding:32px;max-width:550px;width:100%;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,0.5);border:1px solid #334155;">
+        <h2 style="color:#1DB954;margin-top:0;">✓ Signed In Successfully!</h2>
+        <p style="color:#94A3B8;font-size:14px;line-height:1.5;">Transferring your authentication token to MyHub application...</p>
+        <div id="status" style="color:#8B5CF6;font-family:monospace;font-size:13px;margin-top:16px;">Initializing Clerk Session...</div>
+    </div>
+
+    <script>
+        function updateStatus(text, isError) {
+            const el = document.getElementById('status');
+            if (el) {
+                el.innerText = text;
+                if (isError) el.style.color = '#EF4444';
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            try {
+                if (window.Clerk) {
+                    await window.Clerk.load({
+                        frontendApi: 'accounts.hexlab8.com'
+                    });
+                    if (window.Clerk.session) {
+                        updateStatus('Acquiring Turso JWT token...');
+                        const token = await window.Clerk.session.getToken({ template: 'turso' });
+                        if (token) {
+                            updateStatus('Redirecting to MyHub...');
+                            window.location.href = 'http://localhost:7789/clerk-callback?token=' + encodeURIComponent(token);
+                        } else {
+                            updateStatus('No active token found for "turso" template. Check Clerk JWT templates.', true);
+                        }
+                    } else {
+                        updateStatus('No active Clerk session found. Please sign in first.', true);
+                    }
+                } else {
+                    updateStatus('Clerk JS SDK failed to load.', true);
+                }
+            } catch(e) {
+                updateStatus('Error: ' + e.message, true);
+            }
+        });
+    </script>
+</body>
+</html>
