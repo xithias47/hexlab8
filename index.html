@@ -9,7 +9,7 @@
     <div style="background:#1E293B;border-radius:12px;padding:32px;max-width:550px;width:100%;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,0.5);border:1px solid #334155;">
         <h2 style="color:#1DB954;margin-top:0;">✓ Signed In Successfully!</h2>
         <p style="color:#94A3B8;font-size:14px;line-height:1.5;">Transferring your authentication token to MyHub application...</p>
-        <div id="status" style="color:#8B5CF6;font-family:monospace;font-size:13px;margin-top:16px;">Initializing Clerk Session...</div>
+        <div id="status" style="color:#8B5CF6;font-family:monospace;font-size:13px;margin-top:16px;word-break:break-all;">Initializing Clerk Session...</div>
     </div>
 
     <script>
@@ -21,30 +21,45 @@
             }
         }
 
-        window.addEventListener('load', async () => {
+        async function initClerk() {
             try {
-                if (window.Clerk) {
-                    await window.Clerk.load({
-                        frontendApi: 'accounts.hexlab8.com'
-                    });
-                    if (window.Clerk.session) {
-                        updateStatus('Acquiring Turso JWT token...');
-                        const token = await window.Clerk.session.getToken({ template: 'turso' });
-                        if (token) {
-                            updateStatus('Redirecting to MyHub...');
-                            window.location.href = 'http://localhost:7789/clerk-callback?token=' + encodeURIComponent(token);
-                        } else {
-                            updateStatus('No active token found for "turso" template. Check Clerk JWT templates.', true);
-                        }
+                if (!window.Clerk) {
+                    updateStatus('Clerk JS script not found on page.', true);
+                    return;
+                }
+
+                // If Clerk SDK is not initialized yet, initialize it
+                if (!window.Clerk.isReady && typeof window.Clerk.load === 'function') {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const pk = urlParams.get('publishable_key') || urlParams.get('pk') || '';
+                    
+                    const loadOpts = { frontendApi: 'accounts.hexlab8.com' };
+                    if (pk) loadOpts.publishableKey = pk;
+
+                    await window.Clerk.load(loadOpts);
+                }
+
+                if (window.Clerk.session) {
+                    updateStatus('Acquiring Turso JWT token...');
+                    const token = await window.Clerk.session.getToken({ template: 'turso' });
+                    if (token) {
+                        updateStatus('Redirecting to MyHub...');
+                        window.location.href = 'http://localhost:7789/clerk-callback?token=' + encodeURIComponent(token);
                     } else {
-                        updateStatus('No active Clerk session found. Please sign in first.', true);
+                        updateStatus('No active token found for "turso" template. Check Clerk JWT templates.', true);
                     }
                 } else {
-                    updateStatus('Clerk JS SDK failed to load.', true);
+                    updateStatus('No active Clerk session found. Please sign in first.', true);
                 }
-            } catch(e) {
-                updateStatus('Error: ' + e.message, true);
+            } catch (e) {
+                console.error('Clerk SDK error:', e);
+                updateStatus('Clerk error: ' + (e.message || e.toString()), true);
             }
+        }
+
+        window.addEventListener('load', () => {
+            // Give Clerk JS script 300ms to parse if needed
+            setTimeout(initClerk, 300);
         });
     </script>
 </body>
