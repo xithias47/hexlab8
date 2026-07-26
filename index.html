@@ -62,6 +62,7 @@
 
                 if (window.Clerk.user || window.Clerk.session) {
                     const uid = (window.Clerk.user && window.Clerk.user.id) || (window.Clerk.session && window.Clerk.session.user && window.Clerk.session.user.id) || '';
+                    const sessionId = (window.Clerk.session && window.Clerk.session.id) || '';
                     if (uid) {
                         document.getElementById('userIdText').innerText = uid;
                         document.getElementById('uidContainer').style.display = 'block';
@@ -71,7 +72,11 @@
                     const token = await window.Clerk.session.getToken({ template: 'turso' });
                     if (token) {
                         updateStatus('Redirecting to MyHub...');
-                        window.location.href = 'http://localhost:7789/clerk-callback?token=' + encodeURIComponent(token);
+                        let redirectUrl = 'http://localhost:7789/clerk-callback?token=' + encodeURIComponent(token);
+                        if (sessionId) {
+                            redirectUrl += '&session_id=' + encodeURIComponent(sessionId);
+                        }
+                        window.location.href = redirectUrl;
                     } else {
                         updateStatus('No active token found for "turso" template. Check Clerk JWT templates in dashboard.', true);
                     }
