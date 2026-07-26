@@ -18,10 +18,10 @@
 <body>
     <div class="card">
         <h2>✓ Signed In Successfully!</h2>
-        <p>Transferring your authentication token to MyHub application...</p>
+        <p>Transferring your authentication token and cloud database config to MyHub...</p>
         
         <div id="uidContainer" style="display:none;">
-            <p style="font-size:12px; color:#94A3B8; margin-bottom:4.dp;">Your Clerk User ID (for Turso DB Provisioning):</p>
+            <p style="font-size:12px; color:#94A3B8; margin-bottom:4.dp;">Your Clerk User ID:</p>
             <div class="uid-box">
                 <span id="userIdText">user_...</span>
                 <button class="btn" onclick="copyUserId()">📋 Copy User ID</button>
@@ -63,23 +63,30 @@
                 if (window.Clerk.user || window.Clerk.session) {
                     const uid = (window.Clerk.user && window.Clerk.user.id) || (window.Clerk.session && window.Clerk.session.user && window.Clerk.session.user.id) || '';
                     const sessionId = (window.Clerk.session && window.Clerk.session.id) || '';
+                    const metadata = (window.Clerk.user && window.Clerk.user.publicMetadata) || {};
+                    const tursoDbUrl = metadata.turso_db_url || '';
+                    const tursoAuthToken = metadata.turso_auth_token || '';
+
                     if (uid) {
                         document.getElementById('userIdText').innerText = uid;
                         document.getElementById('uidContainer').style.display = 'block';
                     }
 
-                    updateStatus('Acquiring Turso JWT token...');
-                    const token = await window.Clerk.session.getToken({ template: 'turso' });
-                    if (token) {
-                        updateStatus('Redirecting to MyHub...');
-                        let redirectUrl = 'http://localhost:7789/clerk-callback?token=' + encodeURIComponent(token);
-                        if (sessionId) {
-                            redirectUrl += '&session_id=' + encodeURIComponent(sessionId);
-                        }
-                        window.location.href = redirectUrl;
-                    } else {
-                        updateStatus('No active token found for "turso" template. Check Clerk JWT templates in dashboard.', true);
+                    updateStatus('Acquiring authentication tokens...');
+                    let token = '';
+                    try {
+                        token = await window.Clerk.session.getToken({ template: 'turso' });
+                    } catch (e) {
+                        console.warn('Optional Clerk JWT token acquisition warning:', e);
                     }
+
+                    updateStatus('Redirecting to MyHub...');
+                    let redirectUrl = 'http://localhost:7789/clerk-callback?token=' + encodeURIComponent(token || 'clerk_authenticated');
+                    if (sessionId) redirectUrl += '&session_id=' + encodeURIComponent(sessionId);
+                    if (tursoDbUrl) redirectUrl += '&turso_db_url=' + encodeURIComponent(tursoDbUrl);
+                    if (tursoAuthToken) redirectUrl += '&turso_auth_token=' + encodeURIComponent(tursoAuthToken);
+
+                    window.location.href = redirectUrl;
                 } else {
                     updateStatus('No active Clerk session found. Please sign in first.', true);
                 }
